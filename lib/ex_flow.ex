@@ -175,25 +175,17 @@ defmodule ExFlow do
     Macro.prewalk(body, &walk/1)
   end
 
-  defp walk({:~>>, context, [left, right]}) do
-    {:|>, context, [left, quoted_then(right)]}
-  end
-
-  defp walk({:~>, context, [left, right]}) do
-    {:|>, context, [left, quoted_bind(right)]}
-  end
+  %{~>: :bind, ~>>: :then} |> Enum.each(fn {operator, mapping} ->
+    defp walk({unquote(operator), context, [left, right]}) do
+      {:|>, context, [left, quoted(unquote(mapping), right)]}
+    end
+  end)
 
   defp walk(a), do: a
 
-  defp quoted_bind({name, cont, args}) do
+  defp quoted(type, {name, cont, args}) do
     quote do
-      ExFlow.bind(fn unquote(@arg) -> unquote({name, cont, args_for_anonymous_fn(args)}) end)
-    end
-  end
-
-  defp quoted_then({name, cont, args}) do
-    quote do
-      ExFlow.then(fn unquote(@arg) -> unquote({name, cont, args_for_anonymous_fn(args)}) end)
+      ExFlow.unquote(type)(fn unquote(@arg) -> unquote({name, cont, args_for_anonymous_fn(args)}) end)
     end
   end
 
